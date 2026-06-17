@@ -2,9 +2,10 @@ import React, { useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 
 const Loading = () => {
+  const navigate=useNavigate()
 useEffect(() => {
 const timeout=setTimeout(()=>{
-  const navigate=useNavigate('/')
+navigate('/')
 },8000)
 return ()=>clearTimeout(timeout)
 }, [])
