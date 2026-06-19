@@ -3,6 +3,7 @@ import 'dotenv/config'
 import cors from 'cors'
 import connectDb from "./configs/db.js";
 import userRouter from "./routes/userRoutes.js";
+import chatRouter from "./routes/chatRoutes.js";
 
 const app=express()
 
@@ -15,6 +16,8 @@ app.use(express.json())
 // routes
 app.get('/',(req,res)=>res.send("Server is Live"))
 app.use('/api/user',userRouter)
+
+app.use('/api/chat',chatRouter)
 
 const port=process.env.PORT||4000
 
