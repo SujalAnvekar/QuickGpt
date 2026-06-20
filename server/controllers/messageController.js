@@ -1,11 +1,18 @@
+import imageKit from "../configs/imageKit.js";
 import openai from "../configs/openAI.js";
 import Chat from "../models/Chat.js";
 import User from "../models/User.js";
-
+import axios from 'axios'
 // text based AI Chat msg controller
 export const textMessage = async (req, res) => {
   try {
     const userId = req.user._id;
+
+if(req.user.credits<1)
+{
+  return res.json({success:false,message:"You dont have enough credits to use this feature"})
+}
+
     const { chatId, prompt } = req.body;
 
     // Validate input
@@ -33,7 +40,7 @@ export const textMessage = async (req, res) => {
     });
 
     const { choices } = await openai.chat.completions.create({
-      model: "gemini-2.0-flash",
+      model: "gemini-2.5-flash",
       messages: [
         {
           role: "user",
@@ -96,7 +103,53 @@ export const imageMessage = async (req, res) => {
       isImage: false,
     });
 
+// encode prompt
+    const encodedPrompt=encodeURIComponent(prompt)
+
+    // construct ImageKit AI Generation URL
+    const generatedImageUrl=`${process.env.IMAGEKIT_URL_ENDPOINT}/ik-genimg-prompt-${encodedPrompt}/QuickGpt/${Date.now()}.png?tr=w-800,h-800`;
+// console.log("Generated URL:", generatedImageUrl);
+    // trigger generation by fetchingfrom imagekit
+    await new Promise(resolve => setTimeout(resolve, 10000));
+    const aiImageResponse=await axios.get(generatedImageUrl,{responseType:"arraybuffer"})
+
+    // convert to base64
+    const base64Image=`data:image/png;base64,${Buffer.from(aiImageResponse.data,"binary").toString('base64')}`
+
+    // upload to imagekit media library
+    const uploadResponse=await imageKit.upload({
+      file:base64Image,
+      fileName:`${Date.now()}.png`,
+      folder:"QuickGpt"
+    })
+
+
+     const reply = {
+      role:'assistant',
+      content:uploadResponse.url,
+      timestamp: Date.now(),
+      isImage: true,
+      isPublished
+    };
+
+    
+    chat.messages.push(reply)
+    await chat.save()
+    
+    await User.updateOne(
+      { _id: userId },
+      { $inc: { credits: -2 } }
+    );
+    
+   return res.json({
+  success: true,
+  reply
+});
+    
   } catch (error) {
+    console.error("ERROR STATUS:", error.response?.status);
+  console.error("ERROR DATA:", error.response?.data);
+  console.error("ERROR MESSAGE:", error.message);
     return res.json({
       success: false,
       message: error.message,
